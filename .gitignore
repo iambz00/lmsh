@@ -1,0 +1,9 @@
+*.bak
+# Python venv
+Lib/*
+Scripts/*
+pyvenv.cfg
+# pycompile
+build/*
+*.exe
+*.spec
