@@ -12,10 +12,9 @@ import selenium.common.exceptions as SeleniumException
 from wcwidth import wcswidth
 
 import time, os, sys
-import getpass
-import urllib3
+import getpass, urllib3, argparse
 
-version = "20230328"
+version = "20230712"
 
 # Fill blank
 def p(*args, **kwargs):
@@ -27,15 +26,16 @@ def p(*args, **kwargs):
     print(*args, " " * (width-length-2), **kwargs)
 
 class Lms:
-    def __init__(self, url = "https://www.gbeti.or.kr"):
+    def __init__(self, url, noheadless, size):
         os.environ["WDM_SSL_VERIFY"] = "0"
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         options = webdriver.ChromeOptions()
         #options.add_argument("--log-level=2")
         im_not_headless = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
         options.add_argument("user-agent=" + im_not_headless)
-        options.add_argument("--headless")
-        options.add_argument("--window-size=1920,1080")
+        if not noheadless:
+            options.add_argument("--headless")
+        options.add_argument("--window-size=" + size)
         options.add_argument("--disable-gpu")
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
         self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
@@ -129,7 +129,9 @@ class Lms:
         current_section = " "
         current_subsect = " "
         current_progress = 0.0
-        startbutton = self.driver.find_element(By.CSS_SELECTOR, 'div#lectBtnControl')
+        #startbutton = self.driver.find_element(By.CSS_SELECTOR, 'div#lectBtnControl')
+        # Get First Button
+        startbutton = self.driver.find_element(By.CSS_SELECTOR, 'a.btn_learning_list')
         if startbutton.is_displayed():
             startbutton.click()
             time.sleep(2)
@@ -201,7 +203,23 @@ class Lms:
         sys.exit(0)
 
 if __name__ == "__main__":
-    print(f"\n  연수원 강의 듣기 v{version}")
-    lms = Lms()
+    parser = argparse.ArgumentParser(usage="%(prog)s [url]",
+        description="",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        #add_help=False
+        )
+    default_url = "https://www.gbeti.or.kr"
+    parser.add_argument("url", metavar="url", nargs="?", help="Target URL", default=default_url)
+    parser.add_argument("-b", "--broswer", "--show", help="Show browser window(Not headless mode)", action="store_true")
+    parser.add_argument("-s", "--size", help="Window size", metavar="w,h", default="1280,720")
+    args = parser.parse_args()
+
+    print(f"\n  강의 듣기 v{version}\n")
+    print("* options")
+    vargs = vars(args)
+    for k in vargs:
+        print(f"{k:>12}: {vargs[k]}")
+    lms = Lms(url=args.url, noheadless=args.broswer, size=args.size)
     lms.login()
     lms.select_course()
+
