@@ -5,7 +5,9 @@ __pycache__/*
 Lib/*
 Scripts/*
 pyvenv.cfg
-# pycompile
+# PyInstaller
 build/*
+dist/*
 *.exe
 *.spec
+make.bat
