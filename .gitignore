@@ -1,4 +1,6 @@
 *.bak
+# Python
+__pycache__/*
 # Python venv
 Lib/*
 Scripts/*
