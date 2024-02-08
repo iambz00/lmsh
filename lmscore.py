@@ -9,7 +9,7 @@ import selenium.common.exceptions as SeleniumException
 import time, os, sys
 import getpass, urllib3, argparse
 
-VERSION = "20240207"
+VERSION = "20240208"
 
 class Lms:
     def __init__(self, gui, url, noheadless, size):

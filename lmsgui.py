@@ -10,14 +10,14 @@ from lmscore import Lms
 from b64icons import Icons
 
 NAME = 'L'
-VERSION = '20240207'
+VERSION = '20240208'
 WINDOW_TITLE = f'{NAME}'
 WINDOW_THEME = 'DarkBlue3'
 POPUP_THEME = 'GrayGrayGray'
 
 sg.theme(WINDOW_THEME)
 # True if PyInstaller bundled
-_BUNDLED =  getattr(sys, 'frozen', False)
+_BUNDLED = getattr(sys, 'frozen', False)
 
 WIDTH_SECTION = 56
 WIDTH_NAME = 6
@@ -29,6 +29,8 @@ IMG_SIZE_W = 650
 IMG_SIZE_H = 320
 IMG_SIZE = (IMG_SIZE_W, IMG_SIZE_H)
 BROWSER_SIZE = f'{BROWSER_SIZE_W},{BROWSER_SIZE_H}'
+
+SCROLL_AMOUNT = 50
 
 DEFAULT_URL = 'https://www.gbeti.or.kr'
 
@@ -43,10 +45,6 @@ K.INPUT_URL     = 'INPUT_URL'
 K.INPUT_ID      = 'INPUT_ID'
 K.INPUT_PW      = 'INPUT_PW'
 K.BTN_Login     = 'BTN_Login'
-K.BTN_SCRL_TOP  = 'BTN_SCROLL_TOP'
-K.BTN_SCRL_UP   = 'BTN_SCROLL_UP'
-K.BTN_SCRL_DN   = 'BTN_SCROLL_DOWN'
-K.BTN_SCRL_BOT  = 'BTN_SCROLL_BOTTOM'
 K.SHOW_BROWSER  = 'SHOW_BROWSER'
 K.LIST_Courses  = 'LIST_Courses'
 K.TEXT_Sub1     = 'TEXT_Subject1'
@@ -60,9 +58,7 @@ def log(*args, **kwargs):
     print(f'[{NAME}]',*args, **kwargs)
 
 def Name(text, w=WIDTH_NAME, **kwargs):
-    w = w - len(text)
-    w = w if w > 0 else 0
-    return sg.Text(' ' * w + text, **kwargs)
+    return sg.Text(text, **kwargs, size=w, justification='r')
 
 def Collapsible(layout, key, title='', arrows=('-','+'), collapsed=False):
     """
@@ -80,41 +76,45 @@ def Collapsible(layout, key, title='', arrows=('-','+'), collapsed=False):
                       [sg.pin(sg.Column(layout, key=key, visible=not collapsed, metadata=arrows))]], pad=(0,0))
 
 class LmsGui():
-    def __init__(self) -> None:
+    def __init__(self):
         self.core = None
         self.lock = Lock()
         sg.set_options(font=FONTSTRING)
         image =    sg.Image('', s=IMG_SIZE, visible=False, k=K.IMG)
-        topbar =    [sg.Checkbox('화면 보기', default=False, enable_events=True, k=K.CHECK_Display),
-                     sg.Button(image_data=Icons.CLOSE, k=K.BTN_Close, disabled=True),
-                     sg.Button(image_data=Icons.TOP, k=K.BTN_SCRL_TOP, disabled=True, metadata=-99999),
-                     sg.Button(image_data=Icons.UP , k=K.BTN_SCRL_UP , disabled=True, metadata=-100),
-                     sg.Button(image_data=Icons.DN , k=K.BTN_SCRL_DN , disabled=True, metadata=100),
-                     sg.Button(image_data=Icons.BOT, k=K.BTN_SCRL_BOT, disabled=True, metadata=99999),
-                     ]
+        topbar =    [sg.Col([
+                         [sg.T(f'{NAME} v{VERSION}', size=26)],
+                     ], p=0, element_justification='l'),
+                     sg.Col([
+                        [sg.Checkbox('화면 보기', default=False, enable_events=True, k=K.CHECK_Display), 
+                         sg.Button(image_data=Icons.CLOSE, k=K.BTN_Close, disabled=True)]], p=0, element_justification='r'),
+                         sg.T('강의 닫기')
+                    ]
         if _BUNDLED:
-            topbar.insert(1, sg.Sizer(130, 0))
+            topbar.insert(1, sg.Sizer(20, 16))
         else:
             topbar.insert(1, sg.Button(image_data=Icons.bCLOSE, k='DBGBTN1'))
-            topbar.insert(1, sg.Sizer(110, 0))
         layout1 =   Collapsible(
                         [[Name('URL'), sg.Input(DEFAULT_URL, s=WIDTH_ELEMENT, k=K.INPUT_URL)],
-                         [sg.Col([[Name('ID'), sg.Input(s=15, k=K.INPUT_ID)], [Name('PW'), sg.Input(s=15, password_char='*', k=K.INPUT_PW)]],p=0),
+                         [sg.Col([[Name('ID'), sg.Input(s=15, k=K.INPUT_ID)], [Name('PW'), sg.Input(s=15, password_char='*', k=K.INPUT_PW)]
+                                 ],p=0),
                           sg.Button('로그인', s=(10,2), k=K.BTN_Login),
                           sg.Checkbox('브라우저 창 열기', default=False, k=K.SHOW_BROWSER)]]
                         , K.TAB_Login, '로그인')
         layout2 =   Collapsible([[sg.Listbox(values=[], s=(WIDTH_SECTION,3), bind_return_key=True, k=K.LIST_Courses)]]
                         , K.TAB_List, '수강 과정')
         layout3 =   Collapsible(
-                        [[Name('', k=K.TEXT_Sub1)],
-                         [Name('', k=K.TEXT_Sub2)],
-                         [Name('', k=K.TEXT_Time)],
+                        [[sg.T('', k=K.TEXT_Sub1)],
+                         [sg.T('', k=K.TEXT_Sub2)],
+                         [sg.T('', k=K.TEXT_Time, justification='c')],
                          [sg.ProgressBar(100, s=(35,24), orientation='h', k=K.PBAR_Time)]]  # size????
                     , K.TAB_Progress, '진행도', collapsed=True)
         # output =   sg.Output(s=(WIDTH_SECTION,8), k=K.LOG)
         self.layout = [[image,
                         sg.vtop(sg.Col([topbar, [layout1], [layout2], [layout3], [sg.Sizer(380, 0)]]))]]
                         # sg.Col([[layout1],[layout2],[layout3],[output]])]]
+    def close(self):
+        self.window = None
+        self.core.close() if self.core else None
 
     def collapse_tab(self, key, visible=None):
         key = key.split('-')[0]
@@ -136,7 +136,7 @@ class LmsGui():
         sg.theme(WINDOW_THEME)
 
     def show(self):
-        self.window = sg.Window(WINDOW_TITLE, self.layout, finalize=True, 
+        self.window = sg.Window(WINDOW_TITLE, self.layout, finalize=True, return_keyboard_events=True, 
                                 enable_close_attempted_event=True, location=sg.user_settings_get_entry('-LOCATION-', (None, None)),
                                 right_click_menu=sg.MENU_RIGHT_CLICK_DISABLED)
         self.wUrl   = self.window[K.INPUT_URL]
@@ -157,64 +157,65 @@ class LmsGui():
 
     def main(self):
         w = self.window
-        while True:
-            event, values = w.read(timeout=100)
-            self.refresh()
-            if event in ('Exit', sg.WINDOW_CLOSE_ATTEMPTED_EVENT):
-                sg.user_settings_set_entry('-LOCATION-', self.window.current_location())
-                self.core.close()
-                break
-            elif event == K.CHECK_Display:
-                visible = values[event]
-                self.wImg.update(visible=visible)
-                self.window[K.BTN_SCRL_TOP].update(disabled=not visible)
-                self.window[K.BTN_SCRL_UP ].update(disabled=not visible)
-                self.window[K.BTN_SCRL_DN ].update(disabled=not visible)
-                self.window[K.BTN_SCRL_BOT].update(disabled=not visible)
-            elif event == K.BTN_Close:
-                if self.core:
-                    self.core.stop = True
-            elif event.startswith('BTN_SCROLL'):
-                self.core.scroll(0, w[event].metadata) if self.core else None
-            elif event == 'DBGBTN1':    
-                break
-            # Collapsible
-            elif event.startswith('TAB_'):
-                self.collapse_tab(event)
-            elif event == 'REFRESH':
-                pass
-            elif event == K.BTN_Login:
-                self.window.start_thread(lambda: self.login(self.wId.get(), self.wPw.get(), self.wUrl.get(), self.wBrowser.get()), 'LOGIN-END')
+        try:
+            while True:
+                event, values = w.read(timeout=100)
+                self.refresh()
+                if event in ('Exit', sg.WINDOW_CLOSE_ATTEMPTED_EVENT):
+                    sg.user_settings_set_entry('-LOCATION-', w.current_location())
+                    break
+                elif event == 'MouseWheel:Up':
+                    self.core.scroll(0, -SCROLL_AMOUNT) if self.core else None
+                elif event == 'MouseWheel:Down':
+                    self.core.scroll(0, SCROLL_AMOUNT) if self.core else None
+                elif event == K.CHECK_Display:
+                    visible = values[event]
+                    self.wImg.update(visible=visible)
+                elif event == K.BTN_Close:
+                    if self.core:
+                        self.core.stop = True
+                elif event == 'DBGBTN1':    
+                    break
+                # Collapsible
+                elif event.startswith('TAB_'):
+                    self.collapse_tab(event)
+                elif event == 'REFRESH':
+                    pass
+                elif event == K.BTN_Login:
+                    w.start_thread(lambda: self.login(self.wId.get(), self.wPw.get(), self.wUrl.get(), self.wBrowser.get()), 'LOGIN-END')
 
-            elif event == 'LOGIN-END':
-                if values[event]:   # Error
-                    self.popup(values[event])
-                else:   # No Error
-                    self.window.write_event_value('GET-COURSE', 1)
-            elif event == 'GET-COURSE':
-                self.window.start_thread(self.get_course, 'GET-COURSE-END')
-            elif event == 'GET-COURSE-END':
-                list_courses = []
-                for i in range(len(self.core.courseList)):
-                    list_courses.append(self.core.courseList[i]['text'].strip())
-                self.wList.update(values=list_courses)
-            elif event == K.LIST_Courses:
-                self.window[K.BTN_Close   ].update(disabled=False)
-                num = int(values[event][0][:4].strip()[1:-1])
-                w.start_thread(lambda: self.set_course(num-1), 'LEARN-END')
-            elif event == 'LEARN-END':
-                message = values[event]
-                self.wSubj1.data = ''
-                self.wSubj2.data = ''
-                self.wTime.data = ''
-                self.wPbar.data = ''
-                self.window[K.BTN_Close   ].update(disabled=True)
+                elif event == 'LOGIN-END':
+                    if values[event]:   # Error
+                        self.popup(values[event])
+                    else:   # No Error
+                        w.write_event_value('GET-COURSE', 1)
+                elif event == 'GET-COURSE':
+                    w.start_thread(self.get_course, 'GET-COURSE-END')
+                elif event == 'GET-COURSE-END':
+                    list_courses = []
+                    for i in range(len(self.core.courseList)):
+                        list_courses.append(self.core.courseList[i]['text'].strip())
+                    self.wList.update(values=list_courses)
+                elif event == K.LIST_Courses:
+                    w[K.BTN_Close   ].update(disabled=False)
+                    num = int(values[event][0][:4].strip()[1:-1])
+                    w.start_thread(lambda: self.set_course(num-1), 'LEARN-END')
+                elif event == 'LEARN-END':
+                    message = values[event]
+                    self.wSubj1.data = ''
+                    self.wSubj2.data = ''
+                    self.wTime.data = ''
+                    self.wPbar.data = ''
+                    w[K.BTN_Close   ].update(disabled=True)
 
-                if message == 'SUCCESS':
-                    self.popup('수강 종료')
-                else:
-                    self.popup(message)
-                self.window.write_event_value('GET-COURSE', 1)
+                    if message == 'SUCCESS':
+                        self.popup('수강 종료')
+                    else:
+                        self.popup(message)
+                    w.write_event_value('GET-COURSE', 1)
+        finally:
+            if _BUNDLED:
+                self.close()
 
     def login(self, id, pw, url, noheadless):
         with self.lock:
