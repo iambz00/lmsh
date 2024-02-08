@@ -6,10 +6,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import selenium.common.exceptions as SeleniumException
-import time, os, sys
-import getpass, urllib3, argparse
-
-VERSION = "20240208"
+import time, os, sys, urllib3
 
 class Lms:
     def __init__(self, gui, url, noheadless, size):
@@ -201,7 +198,6 @@ class Lms:
             return_status = 'CLOSE'
         except SeleniumException.UnexpectedAlertPresentException as e:
             print("\n* 경고 - " + e.alert_text)
-            #self.driver.switch_to.alert.accept()
             return_status = e.alert_text
         except SeleniumException.JavascriptException as e:
             print("\n* 수강 완료")
@@ -224,12 +220,6 @@ class Lms:
     def gui_progress(self, progress = '', elapsed = '', total = ''):
         self.gui.wTime.data = f'{elapsed} / {total}'
         self.gui.wPbar.data = progress
-
-    def print_progress(self, progress, played = "", length = ""):
-        strLength = min(50, os.get_terminal_size().columns - 30)
-        fillLength = int(round(strLength * progress / 100))
-        filledStr = "-" * fillLength + " " * (strLength - fillLength)
-        print(f"\r    [{played:>5} / {length:>5}] [{filledStr}] {progress:05.2f}%", end="", flush=True)
     def close(self):
         print("\n* 종료합니다.")
         if self.driver.service.is_connectable():
@@ -239,26 +229,3 @@ class Lms:
         webdriver.ActionChains(self.driver).scroll_by_amount(h, v).perform()
     def get_screenshot(self):
         return self.driver.get_screenshot_as_base64()
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(usage="%(prog)s [url]",
-        description="",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        #add_help=False
-        )
-    default_url = "https://www.gbeti.or.kr"
-    parser.add_argument("url", metavar="url", nargs="?", help="Target URL", default=default_url)
-    parser.add_argument("-b", "--broswer", "--show", help="Show browser window(Not headless mode)", action="store_true")
-    parser.add_argument("-s", "--size", help="Window size", metavar="w,h", default="1280,720")
-    args = parser.parse_args()
-
-    print(f"\n  강의 듣기 v{VERSION}\n")
-    print("* options")
-    vargs = vars(args)
-    for k in vargs:
-        print(f"{k:>12}: {vargs[k]}")
-    lms = Lms(url=args.url, noheadless=args.broswer, size=args.size)
-    userID = input("  ID: ")
-    userPW = getpass.getpass("  PW: ")
-    lms.login(userID, userPW)
-    lms.select_course()

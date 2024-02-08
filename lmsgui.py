@@ -10,7 +10,7 @@ from lmscore import Lms
 from b64icons import Icons
 
 NAME = 'L'
-VERSION = '20240208'
+VERSION = '0.1'
 WINDOW_TITLE = f'{NAME}'
 WINDOW_THEME = 'DarkBlue3'
 POPUP_THEME = 'GrayGrayGray'
@@ -30,7 +30,7 @@ IMG_SIZE_H = 320
 IMG_SIZE = (IMG_SIZE_W, IMG_SIZE_H)
 BROWSER_SIZE = f'{BROWSER_SIZE_W},{BROWSER_SIZE_H}'
 
-SCROLL_AMOUNT = 50
+SCROLL_AMOUNT = 100
 
 DEFAULT_URL = 'https://www.gbeti.or.kr'
 
@@ -106,7 +106,7 @@ class LmsGui():
                         [[sg.T('', k=K.TEXT_Sub1)],
                          [sg.T('', k=K.TEXT_Sub2)],
                          [sg.T('', k=K.TEXT_Time, justification='c')],
-                         [sg.ProgressBar(100, s=(35,24), orientation='h', k=K.PBAR_Time)]]  # size????
+                         [sg.ProgressBar(100, s=(35,18), orientation='h', k=K.PBAR_Time)]]  # size????
                     , K.TAB_Progress, '진행도', collapsed=True)
         # output =   sg.Output(s=(WIDTH_SECTION,8), k=K.LOG)
         self.layout = [[image,
