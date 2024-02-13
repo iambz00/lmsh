@@ -11,3 +11,4 @@ dist/*
 *.exe
 *.spec
 make.bat
+make.ps1

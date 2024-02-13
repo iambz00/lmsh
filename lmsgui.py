@@ -3,20 +3,26 @@ from threading import Lock
 
 from PIL import Image
 from io import BytesIO
-import base64, sys
+import base64, os, sys
 
 from lmscore import Lms
 from b64icons import Icons
 
 NAME = 'L'
-VERSION = '0.2'
+VERSION = '0.2.1'
 WINDOW_TITLE = f'{NAME}'
+RESOURCE_DIR = 'Res'
+WINDOW_ICON = 'file_code_icon_245987.ico'
 WINDOW_THEME = 'DarkBlue3'
 POPUP_THEME = 'GrayGrayGray'
 
 sg.theme(WINDOW_THEME)
 # True if PyInstaller bundled
 _BUNDLED = getattr(sys, 'frozen', False)
+if _BUNDLED:
+    WINDOW_ICON = os.path.join(RESOURCE_DIR, WINDOW_ICON)
+else:
+    WINDOW_ICON = os.path.join('icons', WINDOW_ICON)
 
 WIDTH_SECTION = 56
 WIDTH_NAME = 6
@@ -35,7 +41,7 @@ DEFAULT_URL = 'https://www.gbeti.or.kr'
 
 class K:
     pass
-K.CHECK_Display = 'CHECK_Display'
+K.CHK_Display   = 'CHK_Display'
 K.BTN_Close     = 'BTN_Close'
 K.TAB_Login     = 'TAB_Login'
 K.TAB_List      = 'TAB_List'
@@ -44,7 +50,7 @@ K.INPUT_URL     = 'INPUT_URL'
 K.INPUT_ID      = 'INPUT_ID'
 K.INPUT_PW      = 'INPUT_PW'
 K.BTN_Login     = 'BTN_Login'
-K.SHOW_BROWSER  = 'SHOW_BROWSER'
+K.CHK_Browser   = 'CHK_Browser'
 K.LIST_Courses  = 'LIST_Courses'
 K.TEXT_Sub1     = 'TEXT_Subject1'
 K.TEXT_Sub2     = 'TEXT_Subject2'
@@ -84,7 +90,7 @@ class LmsGui():
                          [sg.T(f'{NAME} v{VERSION}', size=26)],
                      ], p=0, element_justification='l'),
                      sg.Col([
-                        [sg.Checkbox('화면 보기', default=False, enable_events=True, k=K.CHECK_Display), 
+                        [sg.Checkbox('화면 보기', default=False, enable_events=True, k=K.CHK_Display), 
                          sg.Button(image_data=Icons.CLOSE, k=K.BTN_Close, disabled=True)]], p=0, element_justification='r'),
                          sg.T('강의 닫기')
                     ]
@@ -97,7 +103,7 @@ class LmsGui():
                          [sg.Col([[Name('ID'), sg.Input(s=15, k=K.INPUT_ID)], [Name('PW'), sg.Input(s=15, password_char='*', k=K.INPUT_PW)]
                                  ],p=0),
                           sg.Button('로그인', s=(10,2), k=K.BTN_Login),
-                          sg.Checkbox('브라우저 창 열기', default=False, k=K.SHOW_BROWSER)]]
+                          sg.Checkbox('브라우저 창 열기', default=False, k=K.CHK_Browser)]]
                         , K.TAB_Login, '로그인')
         layout2 =   Collapsible([[sg.Listbox(values=[], s=(WIDTH_SECTION,3), bind_return_key=True, k=K.LIST_Courses)]]
                         , K.TAB_List, '수강 과정')
@@ -130,18 +136,18 @@ class LmsGui():
             l = (20 - l) // 2
             text = ' ' * l + text + ' ' * l + '\x00'
         sg.popup(text, *args, **kwargs, location=self.window.mouse_location(), 
-                 grab_anywhere=True, modal=False, auto_close=True, auto_close_duration=5,
-                 any_key_closes=True)
+                 grab_anywhere=True, auto_close=True, auto_close_duration=5, any_key_closes=True, 
+                 modal=False, non_blocking=True)
         sg.theme(WINDOW_THEME)
 
     def show(self):
-        self.window = sg.Window(WINDOW_TITLE, self.layout, finalize=True, return_keyboard_events=True, 
+        self.window = sg.Window(WINDOW_TITLE, self.layout, finalize=True, return_keyboard_events=True, icon=WINDOW_ICON,
                                 enable_close_attempted_event=True, location=sg.user_settings_get_entry('-LOCATION-', (None, None)),
                                 right_click_menu=sg.MENU_RIGHT_CLICK_DISABLED)
         self.wUrl   = self.window[K.INPUT_URL]
         self.wId    = self.window[K.INPUT_ID]
         self.wPw    = self.window[K.INPUT_PW]
-        self.wBrowser = self.window[K.SHOW_BROWSER]
+        self.wBrowser = self.window[K.CHK_Browser]
         self.wList  = self.window[K.LIST_Courses]
         self.wSubj1 = self.window[K.TEXT_Sub1]
         self.wSubj2 = self.window[K.TEXT_Sub2]
@@ -167,7 +173,7 @@ class LmsGui():
                     self.core.scroll(0, -SCROLL_AMOUNT) if self.core else None
                 elif event == 'MouseWheel:Down':
                     self.core.scroll(0, SCROLL_AMOUNT) if self.core else None
-                elif event == K.CHECK_Display:
+                elif event == K.CHK_Display:
                     visible = values[event]
                     self.wImg.update(visible=visible)
                 elif event == K.BTN_Close:
