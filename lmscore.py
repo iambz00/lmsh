@@ -159,6 +159,10 @@ class Lms:
                 if not section or section == "학습하기":
                     section = self.driver.find_element(By.CSS_SELECTOR, "div.class_list_box.ing p").text.strip()
                 subsect = self.driver.find_element(By.CSS_SELECTOR, "#page-info").text.strip()
+                if subject[1:3] == '차시':
+                    subject = subject[:3] + '> ' + subject[3:]
+                elif subject[2:4] == '차시':
+                    subject = subject[:4] + '> ' + subject[4:]
                 if subject and subject != current_subject:
                     print(f"\r[차시]: {subject}")
                     self.gui.wSubj1.data = f"[차시]: {subject}"

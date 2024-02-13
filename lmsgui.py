@@ -3,14 +3,13 @@ from threading import Lock
 
 from PIL import Image
 from io import BytesIO
-import base64
-import sys
+import base64, sys
 
 from lmscore import Lms
 from b64icons import Icons
 
 NAME = 'L'
-VERSION = '0.1'
+VERSION = '0.2'
 WINDOW_TITLE = f'{NAME}'
 WINDOW_THEME = 'DarkBlue3'
 POPUP_THEME = 'GrayGrayGray'
