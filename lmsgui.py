@@ -9,7 +9,7 @@ from lmscore import Lms
 from b64icons import Icons
 
 NAME = 'L'
-VERSION = '0.2.1'
+VERSION = '0.3.0'
 WINDOW_TITLE = f'{NAME}'
 RESOURCE_DIR = 'Res'
 WINDOW_ICON = 'file_code_icon_245987.ico'

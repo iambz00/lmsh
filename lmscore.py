@@ -153,6 +153,14 @@ class Lms:
             time.sleep(2)
         try:
             while not self.stop:
+                vjs_controlbar = self.driver.find_element(By.CSS_SELECTOR, "div.vjs-control-bar")
+                if str(vjs_controlbar.value_of_css_property("opacity")) != "1":
+                    # Show video player control bar
+                    # Set best playback rate. The rate is saved in 'Local storage'.
+                    self.driver.execute_script('''
+                        document.querySelector('div.vjs-control-bar').style.opacity = 1
+                        document.querySelector('.vjs-playback-rate.vjs-menu-button .vjs-menu-item').click()
+                    ''')
                 time.sleep(self.delay)
                 subject = self.driver.find_element(By.CSS_SELECTOR, "div.class_list p.title_box").text.strip()
                 section = self.driver.find_element(By.CSS_SELECTOR, "div.class_list_box.ing li.play div a").text.strip()
