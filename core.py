@@ -6,36 +6,52 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import selenium.common.exceptions as SeleniumException
-import time, os, sys, urllib3
+import time, os, urllib3
 
-class Lms:
-    def __init__(self, gui, url, noheadless, size):
+class LmsCore:
+    def __init__(self, gui, headless = True, size = "1080,580"):
+        self.delay = 0.3
+        self.courseList = []
+        self.gui = gui
+        self.stop = False
         os.environ["WDM_SSL_VERIFY"] = "0"
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
         options = webdriver.ChromeOptions()
         options.add_argument("--log-level=3")
-        im_not_headless = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-        options.add_argument("user-agent=" + im_not_headless)
-        if not noheadless:
-            options.add_argument("--headless")
+        options.add_argument("--headless")
         options.add_argument("--window-size=" + size)
         options.add_argument("--disable-gpu")
         options.add_argument("--hide-scrollbars")
         options.add_argument("--mute-audio")
         options.add_argument("--autoplay-policy=no-user-gesture-required")
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
+
         driver_path = os.path.join(os.path.dirname(ChromeDriverManager().install()), "chromedriver.exe")
+
+        # driver = webdriver.Chrome(service=ChromeService(driver_path), options=options)
+        # driver.implicitly_wait(1)
+        # user_agent = driver.execute_script("return navigator.userAgent")
+        # driver.quit()
+        # print(f"* Got User-Agent: {user_agent}")
+
+        # user_agent = user_agent.replace("HeadlessChrome", "Chrome")
+        user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36'
+        print(f"* Set User-Agent: {user_agent}")
+        options.add_argument("user-agent=" + user_agent)
         self.driver = webdriver.Chrome(service=ChromeService(driver_path), options=options)
-        self.driver.implicitly_wait(3)
+        self.driver.implicitly_wait(1)
+
         self.hMain = self.driver.current_window_handle
-        self.delay = 1
         self.wait = WebDriverWait(self.driver, timeout=10)
-        self.url = url
-        self.courseList = []
-        self.gui = gui
-        self.stop = False
+
     def __del__(self):
-        self.close()
+        if self.driver:
+            self.close()
+
+    def set_base_url(self, url):
+        self.url = url
+
     def close_popups(self):
         while len(self.driver.window_handles) > 1:
             for handle in self.driver.window_handles:
@@ -43,41 +59,36 @@ class Lms:
                     self.driver.switch_to.window(handle)
                     self.driver.close()
         self.driver.switch_to.window(self.hMain)
-    def login(self, userID=None, userPW=None):
+
+    def login(self, url='', userID=None, userPW=None):
+        self.set_base_url(url)
         try:
             print("* 로그인 중...")
             self.driver.get(self.url + "/system/login/login.do")
             self.close_popups()
-            self.gui.request_refresh()
-
             login_id = self.driver.find_element(By.CSS_SELECTOR, "#userInputId")
             login_id.click()
-
-            webdriver.ActionChains(self.driver)\
-                .pause(1)\
-                .send_keys(userID).send_keys(Keys.TAB)\
-                .pause(1)\
-                .send_keys(userPW).perform()
-            self.gui.request_refresh()
-            webdriver.ActionChains(self.driver)\
-                .pause(1)\
-                .send_keys(Keys.ENTER)\
-                .pause(3)\
+            webdriver.ActionChains(self.driver).pause(0.5)\
+                .send_keys(userID).send_keys(Keys.TAB).pause(0.5)\
+                .send_keys(userPW).pause(0.5)\
+                .send_keys(Keys.ENTER).pause(1)\
                 .perform()
         except Exception as e:
-            print(" ...... 오류")
-            return "Error"
+            e.add_note("+ 로그인 실패")
+            raise
         else:
             self.close_popups()
             try:
                 if self.driver.current_url.find("login") > 0:
-                    print(" ...... 실패")
-                    return "다시 로그인하세요"
+                    raise Exception()
                 print(" ...... 성공")
-                return None
             except SeleniumException.UnexpectedAlertPresentException as e:
-                print(" ...... 실패")
-                return e.alert_text
+                e.add_note(e.alert_text)
+                raise
+            except Exception as e:
+                e.add_note("+ 로그인 실패")
+                raise
+
     def get_course(self):
         print("\n* 과정 선택")
         self.driver.get(self.url + "/lh/ms/cs/atnlcListView.do?menuId=3000000101")
@@ -99,7 +110,8 @@ class Lms:
         for i in range(len(self.courseList)):
             print(self.courseList[i]['text'])
         return self.courseList
-    def set_course(self, num):
+
+    def enter_course(self, num, signal):
         if num not in range(len(self.courseList)):
             num = 0
         num_windows = len(self.driver.window_handles)
@@ -109,38 +121,24 @@ class Lms:
         except SeleniumException.UnexpectedAlertPresentException as e:
             print("\n* 경고 - " + e.alert_text)
             self.driver.switch_to.alert().accept()
-            return e.alert_text
+            e.add_note(e.alert_text)
+            raise
         except Exception as e:
             print("\n* 오류 발생 - " + str(e))
-            return 'ERROR'
+            raise
         else:
             self.hLearn = self.get_new_window(num_windows)
             self.driver.switch_to.window(self.hLearn)
-            self.learn(self.gui_progress)
-            return 'SUCCESS'
+            return self.learn(signal)
 
-    def select_course(self):
-        for i in range(len(self.courseList)):
-            print(self.courseList[i]['text'])
-        print("  [0] 종료하기")
-        num = int(input("\n  과정을 선택하세요 [1]: ") or "1") - 1
-        if num == -1:
-            self.close()
-        else:
-            if num not in range(len(self.courseList)):
-                num = 0
-            num_windows = len(self.driver.window_handles)
-            self.courseList[num]['obj'].click()
-            time.sleep(2)
-            self.hLearn = self.get_new_window(num_windows)
-            self.driver.switch_to.window(self.hLearn)
-            self.learn()
     def get_new_window(self, num_windows_before):
         self.wait.until(EC.number_of_windows_to_be(num_windows_before + 1))
         return self.driver.window_handles[-1]
+
     def return_to_main(self):
         self.driver.switch_to.window(self.hMain)
-    def learn(self, progress_func):
+
+    def learn(self, signal):
         return_status = ''
         print("\n* 수강 시작")
         current_subject = " "
@@ -174,16 +172,16 @@ class Lms:
                     subject = subject[:4] + '> ' + subject[4:]
                 if subject and subject != current_subject:
                     print(f"\r[차시]: {subject}")
-                    self.gui.wSubj1.data = f"[차시]: {subject}"
+                    signal.emit([1, f"{subject}"])
                     current_subject = subject
                 elif section and section != current_section:
                     print(f"\r  [강의]: {section} [{subsect}]")
-                    self.gui.wSubj2.data = f"[강의]: {section} [{subsect}]"
+                    signal.emit([2, f"{section} [{subsect}]"])
                     current_section = section
                     current_subsect = subsect
                 elif subsect and subsect != current_subsect:
                     print(f"\r  [강의]: {section} [{subsect}]")
-                    self.gui.wSubj2.data = f"[강의]: {section} [{subsect}]"
+                    signal.emit([2, f"{section} [{subsect}]"])
                     current_subsect = subsect
                 progress = float(self.driver.find_element(By.CSS_SELECTOR, "#lx-player div.vjs-progress-holder").get_attribute("aria-valuenow"))
                 progress_time = self.driver.find_element(By.CSS_SELECTOR, "#lx-player div.vjs-progress-holder").get_attribute("aria-valuetext").strip().split()
@@ -195,7 +193,7 @@ class Lms:
                 if progress == current_progress:
                     if is_quizpage:
                         print(f"\r    [퀴즈]")
-                        self.gui.wSubj2.data = f"[퀴즈]"
+                        signal.emit([2, "- 퀴즈 -"])
                         current_progress = 100.0
                     elif played == length:
                         current_progress = 100.0
@@ -205,10 +203,11 @@ class Lms:
                         playbutton.click()
                 else:
                     current_progress = progress
-                progress_func(current_progress, played, length)
+                signal.emit([0, current_progress, played, length])
                 if current_progress >= 100.0:
                     self.driver.execute_script("next_ScoBtn()")
             return_status = 'CLOSE'
+            signal.emit([-1])
         except SeleniumException.UnexpectedAlertPresentException as e:
             print("\n* 경고 - " + e.alert_text)
             return_status = e.alert_text
@@ -228,17 +227,14 @@ class Lms:
         else:
             return_status = 'ERROR'
             print("\n* 종료합니다.\n")
-            sys.exit(1)
+            #sys.exit(1)
         return return_status
-    def gui_progress(self, progress = '', elapsed = '', total = ''):
-        self.gui.wTime.data = f'{elapsed} / {total}'
-        self.gui.wPbar.data = progress
+
     def close(self):
         print("\n* 종료합니다.")
         if self.driver.service.is_connectable():
             self.driver.quit()
-        sys.exit(0)
+            self.driver = None
+
     def scroll(self, h, v):
-        webdriver.ActionChains(self.driver).scroll_by_amount(h, v).perform()
-    def get_screenshot(self):
-        return self.driver.get_screenshot_as_base64()
+        webdriver.ActionChains(self.driver).scroll_by_amount(h, -v).perform()
